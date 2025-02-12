@@ -43,26 +43,29 @@ function(instance, properties, context) {
     instance.data.getTimer = function(startTime, duration) {
         var now = new Date();
         var endTime = instance.data.computeEndTime(startTime, duration);
-        var remainingSeconds = endTime ? instance.data.computeRemainingSeconds(endTime) : duration;
-        var hrs = Math.floor(remainingSeconds / 3600);
-        var mins = Math.floor((remainingSeconds % 3600) / 60);
-        var secs = remainingSeconds % 60;
+        var totalSeconds = endTime ? instance.data.computeRemainingSeconds(endTime) : duration;
+        var hrs = Math.floor(totalSeconds / 3600);
+        var mins = Math.floor((totalSeconds % 3600) / 60);
+        var secs = totalSeconds % 60;
         var display =
             (hrs < 10 ? "0" + hrs : hrs) + ":" +
             (mins < 10 ? "0" + mins : mins) + ":" +
             (secs < 10 ? "0" + secs : secs);
         var percent_complete = (duration > 0)
-        ? Math.round(((duration - remainingSeconds) / duration) * 100)
+        ? Math.round(((duration - totalSeconds) / duration) * 100)
         : 0;
-        return {remainingSeconds: remainingSeconds, percent_complete: percent_complete, display: display};
+        return {totalSeconds: totalSeconds, percent_complete: percent_complete, display: display, hrs: hrs, mins: mins, secs: secs};
     }
     
-    instance.data.publishTimer = function (duration) {
+    instance.data.publishTimer = function (duration, hide) {
         var startTime = instance.data.getCookieStartTime(instance.data.cookie_name);
         var timer = instance.data.getTimer(startTime, duration);
-        instance.canvas.text(timer['display']);
-        instance.publishState("seconds_remaining", timer['remainingSeconds']);
+        if (!hide) instance.canvas.text(timer['display']);
+        instance.publishState("total_remaining_seconds", timer['totalSeconds']);
         instance.publishState("percent_complete", timer['percent_complete']);
+        instance.publishState("remaining_hours", timer['hrs']);
+        instance.publishState("remaining_minutes", timer["mins"]);
+        instance.publishState("remaining_seconds", timer["secs"]);
         if (timer['remainingSeconds'] <= 0) {
             clearInterval(instance.data.timer_interval);
             instance.triggerEvent("timer_finished");
@@ -75,10 +78,10 @@ function(instance, properties, context) {
     instance.data.cookie_name = `bubble_timer_${properties.id}`;
     instance.data.id = properties.id;
     instance.data.duration = Number(properties.duration);
+    instance.data.hide = properties.hide;
     
     var start_datetime = instance.data.getCookieStartTime(instance.data.cookie_name);
     if(start_datetime && start_datetime.getTime() !== 0)
-        instance.data.timer_interval = setInterval(() => instance.data.publishTimer(instance.data.duration), 333);
-    instance.data.publishTimer(instance.data.duration);
-    console.log(instance.data.getCookie(instance.data.cookie_name));
+        instance.data.timer_interval = setInterval(() => instance.data.publishTimer(instance.data.duration, instance.data.hide), 333);
+    instance.data.publishTimer(instance.data.duration, instance.data.hide);
 }
